@@ -60,6 +60,9 @@ def print_help() -> None:
     --format_version        0.3.0|1.0.0|1.1.0 >> ((default) is 1.0.0)
     --musescore_path        path to MuseScore executable
     
+    [yt-dlp]
+    --cookiefile            File name where cookies should be read from and dumped to.
+    
     [device]
     --force_cpu             Force all steps to be processed on CPU.
     --force_whisper_cpu     Force whisper transcription to be processed on CPU.

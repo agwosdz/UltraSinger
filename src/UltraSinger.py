@@ -354,7 +354,7 @@ def InitProcessData():
             settings.output_folder_path,
             process_data.process_data_paths.audio_output_file_path,
             process_data.media_info,
-        ) = download_from_youtube(settings.input_file_path, settings.output_folder_path)
+        ) = download_from_youtube(settings.input_file_path, settings.output_folder_path, settings.cookiefile)
     else:
         # Audio File
         print(f"{ULTRASINGER_HEAD} {gold_highlighted('full automatic mode')}")
@@ -681,6 +681,8 @@ def init_settings(argv: list[str]) -> Settings:
             except ValueError as ve:
                 print(f"The model {arg} is not a valid demucs model selection. Please use one of the following models: {blue_highlighted(', '.join([m.value for m in DemucsModel]))}")
                 sys.exit()
+        elif opt in ("--cookiefile"):
+            settings.cookiefile = arg
     if settings.output_folder_path == "":
         if settings.input_file_path.startswith("https:"):
             dirname = os.getcwd()
@@ -721,7 +723,8 @@ def arg_options():
         "format_version=",
         "keep_cache",
         "musescore_path=",
-        "keep_numbers"
+        "keep_numbers",
+        "cookiefile=",
     ]
     return long, short
 

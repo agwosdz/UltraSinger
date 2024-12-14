@@ -136,6 +136,9 @@ _Not all options working now!_
     --plot                  Enable creation of plots. Plots are disabled by default.
     --format_version        0.3.0|1.0.0|1.1.0 >> ((default) is 1.0.0)
     --musescore_path        path to MuseScore executable
+    
+    [yt-dlp]
+    --cookiefile            File name where cookies should be read from
 
     [device]
     --force_cpu             Force all steps to be processed on CPU.
@@ -160,6 +163,11 @@ For standard use, you only need to use [opt]. All other options are optional.
 ```commandline
 -i https://www.youtube.com/watch?v=BaW_jenozKc
 ```
+
+Note that if you run into a yt-dlp error such as `Sign in to confirm you’re not a bot. This helps protect our community` ([yt-dlp issue](https://github.com/yt-dlp/yt-dlp/issues/10128)) you can follow these steps:
+
+* generate a cookies.txt file with [yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/Installation) `yt-dlp --cookies cookies.txt --cookies-from-browser firefox`
+* then pass the cookies.txt to UltraSinger `--cookiefile cookies.txt`
 
 #### UltraStar (re-pitch)
 
