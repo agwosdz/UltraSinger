@@ -87,7 +87,9 @@ def print_support() -> None:
 
 def print_version(app_version: str) -> None:
     """Print version text"""
+    versiontext = (f"UltraSinger Version: {app_version}")    
+    strarquant = "*"*len(versiontext) # starlength  
     print()
-    print(f"{ULTRASINGER_HEAD} {gold_highlighted('*****************************')}")
+    print(f"{ULTRASINGER_HEAD} {gold_highlighted(strarquant)}")
     print(f"{ULTRASINGER_HEAD} {gold_highlighted('UltraSinger Version:')} {light_blue_highlighted(app_version)}")
-    print(f"{ULTRASINGER_HEAD} {gold_highlighted('*****************************')}")
+    print(f"{ULTRASINGER_HEAD} {gold_highlighted(strarquant)}")

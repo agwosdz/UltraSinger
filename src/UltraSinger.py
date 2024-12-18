@@ -148,7 +148,9 @@ def run() -> tuple[str, Score, Score]:
         print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Vocals will not be separated')}")
     if not settings.hyphenation:
         print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Hyphenation will not be applied')}")
-
+    if settings.demucs_model != DemucsModel.HTDEMUCS:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Using demucs model: ')}{settings.demucs_model.value}")
+        print(f"{ULTRASINGER_HEAD} {gold_highlighted('Warning:')} {blue_highlighted('Changing the')} {red_highlighted('demucs')} {blue_highlighted('model is an')} {red_highlighted('experimental feature.')}\n{ULTRASINGER_HEAD}\t{blue_highlighted('Please report any issues to the GitHub repo.')}")
     process_data = InitProcessData()
     
     process_data.process_data_paths.cache_folder_path = (
@@ -347,7 +349,7 @@ def InitProcessData():
 
     elif settings.input_file_path.startswith("https:"):
         # Youtube
-        print(f"{ULTRASINGER_HEAD} {gold_highlighted('full automatic mode')}")
+        print(f"{ULTRASINGER_HEAD} {gold_highlighted('Full Automatic Mode')}")
         process_data = ProcessData()
         (
             process_data.basename,
@@ -357,7 +359,7 @@ def InitProcessData():
         ) = download_from_youtube(settings.input_file_path, settings.output_folder_path, settings.cookiefile)
     else:
         # Audio File
-        print(f"{ULTRASINGER_HEAD} {gold_highlighted('full automatic mode')}")
+        print(f"{ULTRASINGER_HEAD} {gold_highlighted('Full Automatic Mode')}")
         process_data = ProcessData()
         (
             process_data.basename,
@@ -682,7 +684,6 @@ def init_settings(argv: list[str]) -> Settings:
         elif opt in ("--demucs"):
             try:
                 settings.demucs_model = DemucsModel(arg)
-                print(f"{ULTRASINGER_HEAD} {gold_highlighted('Warning: ')} {blue_highlighted('Changing the ')} {red_highlighted('demucs ')} {blue_highlighted('model is an ')} {red_highlighted('experimental feature. ')} {blue_highlighted('Please report any issues to the GitHub repo.')}")
             except ValueError as ve:
                 print(f"The model {arg} is not a valid demucs model selection. Please use one of the following models: {blue_highlighted(', '.join([m.value for m in DemucsModel]))}")
                 sys.exit()
