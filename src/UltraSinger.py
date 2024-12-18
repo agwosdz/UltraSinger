@@ -682,6 +682,7 @@ def init_settings(argv: list[str]) -> Settings:
         elif opt in ("--demucs"):
             try:
                 settings.demucs_model = DemucsModel(arg)
+                print(f"{ULTRASINGER_HEAD} {gold_highlighted('Warning: ')} {blue_highlighted('Changing the demucs model is an ')} {red_highlighted('experimental feature. ')} {blue_highlighted('Please report any issues to the GitHub repo.')}")
             except ValueError as ve:
                 print(f"The model {arg} is not a valid demucs model selection. Please use one of the following models: {blue_highlighted(', '.join([m.value for m in DemucsModel]))}")
                 sys.exit()

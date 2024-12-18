@@ -108,7 +108,7 @@ _Not all options working now!_
     (-p      Check pitch of Ultrastar.txt input) # In Progress
     (-m      Create midi file) # In Progress
 
-    [separation]
+    [separation] Experimental feature - Other htdemucs models might need additional work!!!
     # Default is htdemucs
     --demucs              Model name htdemucs|htdemucs_ft|htdemucs_6s|hdemucs_mmi|mdx|mdx_extra|mdx_q|mdx_extra_q >> ((default) is htdemucs)
 
