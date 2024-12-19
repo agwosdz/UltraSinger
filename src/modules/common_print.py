@@ -26,11 +26,6 @@ def print_help() -> None:
     ## INPUT is ultrastar.txt ##
     default  Creates all
 
-    # Single selection is in progress, you currently getting all!
-    (-r      repitch Ultrastar.txt (input has to be audio)) # In Progress
-    (-p      Check pitch of Ultrastar.txt input) # In Progress
-    (-m      Create midi file) # In Progress
-
     [separation] Experimental feature - Other htdemucs models might need additional work!!!
     # Default is htdemucs
     --demucs              Model name htdemucs|htdemucs_ft|htdemucs_6s|hdemucs_mmi|mdx|mdx_extra|mdx_q|mdx_extra_q >> ((default) is htdemucs)
@@ -57,7 +52,7 @@ def print_help() -> None:
     --create_audio_chunks   Enable creation of audio chunks. Audio chunks are disabled by default.
     --keep_cache            Keep cache folder after creation. Cache folder is removed by default.
     --plot                  Enable creation of plots. Plots are disabled by default.
-    --format_version        0.3.0|1.0.0|1.1.0 >> ((default) is 1.1.0)
+    --format_version        0.3.0|1.0.0|1.1.0|1.2.0 >> ((default) is 1.2.0)
     --musescore_path        path to MuseScore executable
     
     [yt-dlp]
