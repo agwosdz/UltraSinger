@@ -10,8 +10,8 @@ from modules.Ultrastar.ultrastar_txt import FormatVersion
 @dataclass_json
 @dataclass
 class Settings:
-    APP_VERSION = "0.0.13-dev1"
-
+    APP_VERSION = "0.0.13-dev2"
+    CONFIDENCE_THRESHOLD = 0.6
     create_midi = True
     create_plot = False
     create_audio_chunks = False
@@ -66,3 +66,4 @@ class Settings:
     skip_cache_transcription = False
     skip_cache_pitch_detection = False
     calculate_score = True
+    interactive_mode = False

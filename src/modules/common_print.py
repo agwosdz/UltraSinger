@@ -13,10 +13,12 @@ def print_help() -> None:
     -i      Ultrastar.txt
             audio like .mp3, .wav, youtube link
     -o      Output folder
+    --interactive           Interactive mode for easier configuration
     
     [mode]
     ## INPUT is audio ##
     default  Creates all
+
     
     # Single file creation selection is in progress, you currently getting all!
     (-u      Create ultrastar txt file) # In Progress

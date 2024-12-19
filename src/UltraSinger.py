@@ -68,7 +68,11 @@ from modules.DeviceDetection.device_detection import check_gpu_support
 from modules.Audio.bpm import get_bpm_from_file
 
 from Settings import Settings
-
+#Imports for Interactive Mode  
+from rich.console import Console  
+from rich.table import Table  
+from rich.theme import Theme  
+from rich.prompt import Prompt  
 settings = Settings()
 
 
@@ -151,6 +155,8 @@ def run() -> tuple[str, Score, Score]:
     if settings.demucs_model != DemucsModel.HTDEMUCS:
         print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Using demucs model: ')}{settings.demucs_model.value}")
         print(f"{ULTRASINGER_HEAD} {gold_highlighted('Warning:')} {blue_highlighted('Changing the')} {red_highlighted('demucs')} {blue_highlighted('model is an')} {red_highlighted('experimental feature.')}\n{ULTRASINGER_HEAD}\t{blue_highlighted('Please report any issues to the GitHub repo.')}")
+    if settings.whisper_model != WhisperModel.LARGE_V2:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Using whisper model: ')}{settings.whisper_model.value}")
     process_data = InitProcessData()
     
     process_data.process_data_paths.cache_folder_path = (
@@ -594,7 +600,9 @@ def main(argv: list[str]) -> None:
     """Main function"""
     print_version(settings.APP_VERSION)
     init_settings(argv)
-    run()
+    if settings.interactive_mode:  
+        init_settings_interactive()      
+        run()
     sys.exit()
 
 
@@ -610,6 +618,7 @@ def init_settings(argv: list[str]) -> Settings:
     if len(opts) == 0:
         print_help()
         sys.exit()
+    settings.interactive_mode = False  # Add this line  
     for opt, arg in opts:
         if opt == "-h":
             print_help()
@@ -680,6 +689,9 @@ def init_settings(argv: list[str]) -> Settings:
             settings.musescore_path = arg
         elif opt in ("--cookiefile"):
             settings.cookiefile = arg
+        elif opt in ("--interactive"):  # Added this option  
+            settings.interactive_mode = True  
+
         #Addition of demucs model choice. Work seems to be needed to make sure syntax is same for models. Added error handling for unknown models
         elif opt in ("--demucs"):
             try:
@@ -714,13 +726,13 @@ def arg_options():
         "whisper_batch_size=",
         "whisper_compute_type=",
         "language=",
-        "plot=",
-        "midi=",
+        "plot",
+        "midi",
         "disable_hyphenation",
         "disable_separation",
         "disable_karaoke",
         "create_audio_chunks",
-        "ignore_audio=",
+        "ignore_audio",
         "force_cpu",
         "force_whisper_cpu",
         "force_crepe_cpu",
@@ -728,10 +740,152 @@ def arg_options():
         "keep_cache",
         "musescore_path=",
         "cookiefile=",
-        "keep_numbers"
+        "keep_numbers",
+        "interactive"  # Added interactive option here
     ]
     return long, short
 
+def init_settings_interactive() -> Settings:  
+    ULTRASINGER_HEAD = "[bold green][UltraSinger][/bold green]"  
+    console = Console()
+    console.print(f"{ULTRASINGER_HEAD} [gold]UltraSinger Interactive Mode[/gold]\n")  
+  
+    # Input file  
+    while True:  
+        input_file = console.input(f"{ULTRASINGER_HEAD} Enter the path to the input file ([green]audio file[/green], [green]Ultrastar txt[/green], or [green]YouTube URL[/green]): ").strip()  
+        if input_file:  
+            settings.input_file_path = input_file  
+            break  
+        else:  
+            console.print(f"{ULTRASINGER_HEAD} [bold red]Error:[/bold red] Input file cannot be empty. Please try again.\n")  
+  
+    # Output folder  
+    output_folder = console.input(f"{ULTRASINGER_HEAD} Enter the output folder path (leave empty for default '[green]output[/green]' folder): ").strip()  
+    if output_folder:  
+        settings.output_folder_path = output_folder  
+    else:  
+        if settings.input_file_path.startswith("https:"):  
+            dirname = os.getcwd()  
+        else:  
+            dirname = os.path.dirname(settings.input_file_path)  
+        settings.output_folder_path = os.path.join(dirname, "output")  
+  
+    # Whisper model  
+    whisper_models = [model.value for model in WhisperModel]  
+    console.print(f"\n{ULTRASINGER_HEAD} [bold underline]Available Whisper Models:[/bold underline]\n")  
+  
+    # Display options in 4 columns using Table  
+    num_columns = 4  
+    table = Table(show_header=False, show_edge=False, padding=(0, 2))  
+    for _ in range(num_columns):  
+        table.add_column()  
+  
+    # Format the items and add them to the table  
+    items = [f"[bright_green]{idx}.[/bright_green] {model_name}" for idx, model_name in enumerate(whisper_models, start=1)]  
+    rows = [items[i:i+num_columns] for i in range(0, len(items), num_columns)]  
+    for row in rows:  
+        # If the last row is shorter than num_columns, fill with empty strings  
+        if len(row) < num_columns:  
+            row += [""] * (num_columns - len(row))  
+        table.add_row(*row)  
+  
+    console.print(table)  
+  
+    while True:  
+        model_choice = console.input(f"\n{ULTRASINGER_HEAD} Enter the [green]Whisper model[/green] number corresponding to your choice (1-{len(whisper_models)}), or leave empty for default ([cyan]{WhisperModel.LARGE_V2.value}[/cyan]): ").strip()  
+        if not model_choice:  
+            # Default model  
+            settings.whisper_model = WhisperModel.LARGE_V2  
+            break  
+        elif model_choice.isdigit() and 1 <= int(model_choice) <= len(whisper_models):  
+            settings.whisper_model = WhisperModel(whisper_models[int(model_choice) - 1])  
+            break  
+        else:  
+            console.print(f"{ULTRASINGER_HEAD} [bold red]Error:[/bold red] Invalid choice. Please select a valid number.\n")  
+  
+    # Whisper align model  
+    settings.whisper_align_model = console.input(f"\n{ULTRASINGER_HEAD} Enter the [green]Whisper Align Model[/green] or leave empty for none: ").strip()  
+    if not settings.whisper_align_model:  
+        settings.whisper_align_model = None  
+  
+    # DEMUCS model  
+    demucs_models = [model.value for model in DemucsModel]  
+    console.print(f"\n{ULTRASINGER_HEAD} [bold underline]Available Demucs Models:[/bold underline]\n")  
+  
+    # Display options in 4 columns using Table  
+    num_columns = 4  
+    table = Table(show_header=False, show_edge=False, padding=(0, 2))  
+    for _ in range(num_columns):  
+        table.add_column()  
+  
+    items = [f"[bright_green]{idx}.[/bright_green] {model_name}" for idx, model_name in enumerate(demucs_models, start=1)]  
+    rows = [items[i:i+num_columns] for i in range(0, len(items), num_columns)]  
+    for row in rows:  
+        if len(row) < num_columns:  
+            row += [""] * (num_columns - len(row))  
+        table.add_row(*row)  
+  
+    console.print(table)  
+  
+    while True:  
+        demucs_choice = console.input(f"\n{ULTRASINGER_HEAD} Enter the [green]Demucs model[/green] number corresponding to your choice (1-{len(demucs_models)}), or leave empty for default ([cyan]{DemucsModel.HTDEMUCS.value}[/cyan]): ").strip()  
+        if not demucs_choice:  
+            # Default model  
+            settings.demucs_model = DemucsModel.HTDEMUCS  
+            break  
+        elif demucs_choice.isdigit() and 1 <= int(demucs_choice) <= len(demucs_models):  
+            settings.demucs_model = DemucsModel(demucs_models[int(demucs_choice) - 1])  
+            break  
+        else:  
+            console.print(f"{ULTRASINGER_HEAD} [bold red]Error:[/bold red] Invalid choice. Please select a valid number.\n")  
+  
+    # Additional options  
+    additional_options_input = console.input(f"\n{ULTRASINGER_HEAD} Do you want to configure [green]additional options[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower()  
+    additional_options = additional_options_input == 'y'  
+    if additional_options:  
+        console.print(f"\n{ULTRASINGER_HEAD} [bold underline]Additional options:[/bold underline]\n")  
+        whipser_batch_size_response = console.input(f"{ULTRASINGER_HEAD} Enter the [green]Whisper batch size[/green] (default [cyan]16[/cyan]): ").strip()
+        if len(whipser_batch_size_response)>0:
+            settings.whisper_batch_size = int(whipser_batch_size_response) if whipser_batch_size_response.isdigit() else 16
+        whisper_compute_choice = console.input(f"{ULTRASINGER_HEAD} Enter the [green]Whisper compute type[/green] (default '[cyan]float16[/cyan]' for CUDA and '[cyan]int8[/cyan]' for CPU): ").strip()  
+        if whisper_compute_choice:  
+            settings.whisper_compute_type = whisper_compute_choice  
+        settings.create_plot = console.input(f"{ULTRASINGER_HEAD} Create [green]plot[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y'  
+        settings.create_midi = not (console.input(f"{ULTRASINGER_HEAD} Create [green]MIDI file[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_green]y[/bright_green]'): ").strip().lower() == 'n')  
+        settings.hyphenation = not (console.input(f"{ULTRASINGER_HEAD} Disable [green]hyphenation[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y')  
+        settings.use_separated_vocal = not (console.input(f"{ULTRASINGER_HEAD} Disable [green]vocal separation[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y')  
+        settings.create_karaoke = not (console.input(f"{ULTRASINGER_HEAD} Disable [green]karaoke creation[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y')  
+        settings.create_audio_chunks = console.input(f"{ULTRASINGER_HEAD} Create [green]audio chunks[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y'  
+        settings.ignore_audio = console.input(f"{ULTRASINGER_HEAD} Ignore [green]audio[/green] and use Ultrastar txt only? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y'  
+        settings.force_cpu = console.input(f"{ULTRASINGER_HEAD} Force [green]CPU usage[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y'  
+        # Device settings  
+        if settings.force_cpu:  
+            os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  
+        else:  
+            settings.tensorflow_device, settings.pytorch_device = check_gpu_support()  
+        settings.force_whisper_cpu = console.input(f"{ULTRASINGER_HEAD} Force [green]Whisper CPU usage[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y'  
+        settings.force_crepe_cpu = console.input(f"{ULTRASINGER_HEAD} Force [green]Crepe CPU usage[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y'  
+        settings.keep_cache = console.input(f"{ULTRASINGER_HEAD} Keep [green]cache[/green] after execution? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower() == 'y'  
+        # Language  
+        language = console.input(f"\n{ULTRASINGER_HEAD} Enter the [green]language code[/green] (e.g., '[cyan]en[/cyan]' for English, '[cyan]es[/cyan]' for Spanish) or leave empty for [cyan]auto-detect[/cyan]: ").strip()  
+        if language:  
+            settings.language = language  
+  
+        # Keep numbers  
+        keep_numbers_input = console.input(f"\n{ULTRASINGER_HEAD} Do you want to transcribe [green]numbers as numerics[/green]? ([bright_green]y[/bright_green]/[bright_red]n[/bright_red], default '[bright_red]n[/bright_red]'): ").strip().lower()  
+        settings.keep_numbers = keep_numbers_input == 'y'  
+  
+        # MuseScore path  
+        musescore_path = console.input(f"\n{ULTRASINGER_HEAD} Enter the path to [green]MuseScore executable[/green] for sheet generation (leave empty to skip): ").strip()  
+        if musescore_path:  
+            settings.musescore_path = musescore_path  
+  
+        # Cookie file (for YouTube downloads)  
+        cookie_file = console.input(f"\n{ULTRASINGER_HEAD} Enter the path to [green]cookies.txt[/green] file (if required for YouTube downloads, leave empty otherwise): ").strip()  
+        if cookie_file:  
+            settings.cookiefile = cookie_file  
+    console.print(f"\n{ULTRASINGER_HEAD} [bold cyan]Thank you! Starting processing...[/bold cyan]\n")  
+    return settings  
 
 if __name__ == "__main__":
     main(sys.argv[1:])
