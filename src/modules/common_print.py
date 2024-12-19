@@ -26,9 +26,13 @@ def print_help() -> None:
     ## INPUT is ultrastar.txt ##
     default  Creates all
 
+    [separation] Experimental feature - Other htdemucs models might need additional work!!!
+    # Default is htdemucs
+    --demucs              Model name htdemucs|htdemucs_ft|htdemucs_6s|hdemucs_mmi|mdx|mdx_extra|mdx_q|mdx_extra_q >> ((default) is htdemucs)
+
     [transcription]
     # Default is whisper
-    --whisper               Multilingual model > tiny|base|small|medium|large-v1|large-v2  >> ((default) is large-v2)
+    --whisper               Multilingual model > tiny|base|small|medium|large-v1|large-v2|large-v3  >> ((default) is large-v2)
                             English-only model > tiny.en|base.en|small.en|medium.en
     --whisper_align_model   Use other languages model for Whisper provided from huggingface.co
     --language              Override the language detected by whisper, does not affect transcription but steps after transcription
@@ -42,12 +46,12 @@ def print_help() -> None:
     --crepe_step_size  unit is miliseconds >> ((default) is 10)
     
     [extra]
-    --hyphenation           Use automatic hyphenation > True|False >> ((default) is True)
-    --disable_separation    Disable track separation > True|False >> ((default) is False)
-    --disable_karaoke       True|False >> ((default) is False)
-    --create_audio_chunks   True|False >> ((default) is False)
-    --keep_cache            Keep cache folder after generation > True|False >> ((default) is False)
-    --plot                  Create a pitch plot > True|False >> ((default) is False)
+    --disable_hyphenation   Disable word hyphenation. Hyphenation is enabled by default.
+    --disable_separation    Disable track separation. Track separation is enabled by default.
+    --disable_karaoke       Disable creation of karaoke style txt file. Karaoke is enabled by default.
+    --create_audio_chunks   Enable creation of audio chunks. Audio chunks are disabled by default.
+    --keep_cache            Keep cache folder after creation. Cache folder is removed by default.
+    --plot                  Enable creation of plots. Plots are disabled by default.
     --format_version        0.3.0|1.0.0|1.1.0|1.2.0 >> ((default) is 1.2.0)
     --musescore_path        path to MuseScore executable
     
@@ -55,9 +59,9 @@ def print_help() -> None:
     --cookiefile            File name where cookies should be read from and dumped to.
     
     [device]
-    --force_cpu             True|False >> ((default) is False)  All steps will be forced to cpu
-    --force_whisper_cpu     True|False >> ((default) is False)  Only whisper will be forced to cpu
-    --force_crepe_cpu       True|False >> ((default) is False)  Only crepe will be forced to cpu
+    --force_cpu             Force all steps to be processed on CPU.
+    --force_whisper_cpu     Force whisper transcription to be processed on CPU.
+    --force_crepe_cpu       Force crepe pitch detection to be processed on CPU.
     """
     print(help_string)
 
@@ -78,7 +82,9 @@ def print_support() -> None:
 
 def print_version(app_version: str) -> None:
     """Print version text"""
+    versiontext = (f"UltraSinger Version: {app_version}")    
+    strarquant = "*"*len(versiontext) # starlength  
     print()
-    print(f"{ULTRASINGER_HEAD} {gold_highlighted('*****************************')}")
+    print(f"{ULTRASINGER_HEAD} {gold_highlighted(strarquant)}")
     print(f"{ULTRASINGER_HEAD} {gold_highlighted('UltraSinger Version:')} {light_blue_highlighted(app_version)}")
-    print(f"{ULTRASINGER_HEAD} {gold_highlighted('*****************************')}")
+    print(f"{ULTRASINGER_HEAD} {gold_highlighted(strarquant)}")

@@ -38,6 +38,11 @@ def cyan_highlighted(text: str) -> str:
     return f"{Bcolors.cyan}{text}{Bcolors.endc}"
 
 
+def bright_green_highlighted(text: str) -> str:
+    """Returns a cyan highlighted text"""
+    return f"{Bcolors.bright_green}{text}{Bcolors.endc}"
+
+
 class Bcolors:
     """Colors for the console"""
 
@@ -49,3 +54,4 @@ class Bcolors:
     gold = "\033[93m"
     underline = "\033[4m"
     endc = "\033[0m"
+    bright_green = "\033[38;2;204;255;204m"
