@@ -15,7 +15,6 @@ from modules.Speech_Recognition.TranscribedData import TranscribedData, from_whi
 import re
 import ast
 from num2words import num2words
-from whisperx.asr import FasterWhisperPipeline
 
 #Addition for numbers to words
 re_split_preserve_space = re.compile(r'(\d+|\W+|\w+)')
