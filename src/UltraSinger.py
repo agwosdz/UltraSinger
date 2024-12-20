@@ -602,7 +602,7 @@ def main(argv: list[str]) -> None:
     init_settings(argv)
     if settings.interactive_mode:  
         init_settings_interactive()      
-        run()
+    run()
     sys.exit()
 
 
