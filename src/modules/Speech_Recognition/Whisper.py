@@ -32,6 +32,21 @@ class WhisperModel(Enum):
     LARGE_V2 = "large-v2"
     LARGE_V3 = "large-v3"
 
+def is_year(number, min_year=1000, max_year=None):  
+    """  
+    Evaluate if a number is likely a year.  
+      
+    :param number: The number to evaluate.  
+    :param min_year: The minimum value for a year. Default is 1000.  
+    :param max_year: The maximum value for a year. Default is the current year.  
+    :return: True if the number is within the range of years, otherwise False.  
+    """  
+    if max_year is None:  
+        from datetime import datetime  
+        max_year = datetime.now().year  
+      
+    return isinstance(number, int) and min_year <= number <= max_year  
+    
 #Addition for numbers to words (Using previous code from louispan in PR#135)
 def number_to_words(line,language='en'):
     # https://github.com/m-bain/whisperX
@@ -43,7 +58,10 @@ def number_to_words(line,language='en'):
         try:
             num = ast.literal_eval(token)
             try:
-                out_tokens.append(num2words(num, lang=language))
+                if is_year(num):
+                    out_tokens.append(num2words(num, lang=language, to='year'))
+                else:
+                    out_tokens.append(num2words(num, lang=language))
             except NotImplementedError:
                 print(
                     f"{ULTRASINGER_HEAD} {red_highlighted('Error:')} Unknown language for number transcription. Keeping number as numeric characters for line: {line}, token: {token}"
