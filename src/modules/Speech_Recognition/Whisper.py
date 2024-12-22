@@ -32,6 +32,16 @@ class WhisperModel(Enum):
     LARGE_V2 = "large-v2"
     LARGE_V3 = "large-v3"
 
+def remove_comma_in_number(text):  
+    # Use a regular expression to find numbers with commas and remove the commas  
+    return re.sub(r'(?<=\d),(?=\d)', '', text) 
+
+def has_currency_symbol(text):  
+    # Define a regular expression pattern to match common currency symbols  
+    currency_symbols_pattern = r'[\$€£¥₹]'  
+    # Use re.search to check if any currency symbol is present in the text  
+    return bool(re.search(currency_symbols_pattern, text))
+
 def is_year(number, min_year=1000, max_year=None):  
     """  
     Evaluate if a number is likely a year.  
@@ -60,6 +70,8 @@ def number_to_words(line,language='en'):
             try:
                 if is_year(num):
                     out_tokens.append(num2words(num, lang=language, to='year'))
+                elif has_currency_symbol(token):
+                    out_tokens.append(num2words(num, lang=language, to='currency'))
                 else:
                     out_tokens.append(num2words(num, lang=language))
             except NotImplementedError:
@@ -128,6 +140,7 @@ def transcribe_with_whisper(
         #Addition for numbers to words (Using previous code from louispan in PR#135)
         if keep_numbers == False: 
             for obj in result["segments"]:
+                if "en" in language: obj["text"] = remove_comma_in_number(obj["text"])
                 obj["text"] = number_to_words(obj["text"],language)
 
         # align whisper output
