@@ -14,10 +14,36 @@ from modules.Speech_Recognition.TranscribedData import TranscribedData, from_whi
 #Addition for numbers to words
 import re
 import ast
-from num2words import num2words
+import num2words
+import re
+from num2words.lang_EN import Num2Word_EN
 
-#Addition for numbers to words
-re_split_preserve_space = re.compile(r'(\d+|\W+|\w+)')
+#Addition for numbers to words_v2
+re_split_preserve_space = re.compile(  
+    r'''  
+    # Currency amounts with commas (match first)  
+    [£$€][0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?  
+    |  
+    # Currency amounts without commas  
+    [£$€][0-9]+(?:\.[0-9]+)?  
+    |  
+    # Numbers with commas  
+    [0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?  
+    |  
+    # Numbers without commas  
+    [0-9]+(?:\.[0-9]+)?  
+    |  
+    # Words  
+    [A-Za-z]+  
+    |  
+    # Spaces (preserve)  
+    \s+  
+    |  
+    # Punctuation  
+    [^\w\s]  
+    ''',   
+    re.VERBOSE  
+)  
 
 
 MEMORY_ERROR_MESSAGE = f"{ULTRASINGER_HEAD} {blue_highlighted('whisper')} ran out of GPU memory; reduce --whisper_batch_size or force usage of cpu with --force_cpu"
@@ -32,15 +58,15 @@ class WhisperModel(Enum):
     LARGE_V2 = "large-v2"
     LARGE_V3 = "large-v3"
 
-def remove_comma_in_number(text):  
-    # Use a regular expression to find numbers with commas and remove the commas  
-    return re.sub(r'(?<=\d),(?=\d)', '', text) 
+#Addition for num2words
+def to_currency(self, val, currency='USD', cents=True, separator=' -',
+        adjective=False):
+    result = super(Num2Word_EN, self).to_currency(
+        val, currency=currency, cents=cents, separator=separator,
+        adjective=adjective)
+    # Handle exception, in german is "ein Euro" and not "eins Euro"
+    return result.replace("zero dollars - ", "")
 
-def has_currency_symbol(text):  
-    # Define a regular expression pattern to match common currency symbols  
-    currency_symbols_pattern = r'[\$€£¥₹]'  
-    # Use re.search to check if any currency symbol is present in the text  
-    return bool(re.search(currency_symbols_pattern, text))
 
 def is_year(number, min_year=1000, max_year=None):  
     """  
@@ -58,29 +84,28 @@ def is_year(number, min_year=1000, max_year=None):
     return isinstance(number, int) and min_year <= number <= max_year  
     
 #Addition for numbers to words (Using previous code from louispan in PR#135)
-def number_to_words(line,language='en'):
-    # https://github.com/m-bain/whisperX
-    # Transcript words which do not contain characters in the alignment models dictionary e.g. "2014." or "£13.60" cannot be aligned and therefore are not given a timing.
-    # Therefore, convert numbers to words
-    out_tokens = []
-    in_tokens = re_split_preserve_space.findall(line)
-    for token in in_tokens:
-        try:
-            num = ast.literal_eval(token)
-            try:
+def number_to_words(line, language='en'):  
+    out_tokens = []  
+    in_tokens = [match.group(0) for match in re_split_preserve_space.finditer(line)]  
+    for token in in_tokens: 
+        try:  
+            if token[0] in '$€£¥₹₽₩₪฿₫₴₦₱₲₵₸₺₡₭₮₦₣₳':  
+                # Extract the numeric part and convert  
+                currency_symbol = token[0]  
+                currency_number = token[1:].replace(',', '')  # Remove commas for conversion
+                num_in_words = num2words.num2words(float(currency_number), lang=language, to='currency')  
+                out_tokens.append(f"{currency_symbol}{num_in_words}")  
+            else:  
+                # Try to evaluate as a number  
+                num = ast.literal_eval(token)
                 if is_year(num):
-                    out_tokens.append(num2words(num, lang=language, to='year'))
-                elif has_currency_symbol(token):
-                    out_tokens.append(num2words(num, lang=language, to='currency'))
-                else:
-                    out_tokens.append(num2words(num, lang=language))
-            except NotImplementedError:
-                print(
-                    f"{ULTRASINGER_HEAD} {red_highlighted('Error:')} Unknown language for number transcription. Keeping number as numeric characters for line: {line}, token: {token}"
-                )
-        except Exception:
-            out_tokens.append(token)
-    return ''.join(out_tokens) 
+                    out_tokens.append(num2words.num2words(num, lang=language, to='year'))  
+                else:  
+                    out_tokens.append(num2words.num2words(num, lang=language))  
+        except Exception:  
+            # If not a number, append the token as is  
+            out_tokens.append(token)  
+    return ''.join(out_tokens)  
 
 def transcribe_with_whisper(
     audio_path: str,
@@ -139,10 +164,12 @@ def transcribe_with_whisper(
 
         #Addition for numbers to words (Using previous code from louispan in PR#135)
         if keep_numbers == False: 
+            Num2Word_EN.to_currency = to_currency  
             for obj in result["segments"]:
-                if "en" in language: obj["text"] = remove_comma_in_number(obj["text"])
+                print(f"laanguage: {language}")
+                print( obj["text"])
                 obj["text"] = number_to_words(obj["text"],language)
-
+                print(obj["text"])
         # align whisper output
         result_aligned = whisperx.align(
             result["segments"],
