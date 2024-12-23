@@ -16,6 +16,8 @@ from modules.Audio.vocal_chunks import (
     create_audio_chunks_from_ultrastar_data,
 )
 from modules.Audio.silence_processing import remove_silence_from_transcription_data, mute_no_singing_parts
+from modules.Speech_Recognition.Whisper import WhisperModel
+from modules.Audio.separation import DemucsModel
 
 from modules.Audio.convert_audio import convert_audio_to_mono_wav, convert_wav_to_mp3
 from modules.Audio.youtube import (
@@ -28,7 +30,8 @@ from modules.console_colors import (
     gold_highlighted,
     red_highlighted,
     green_highlighted,
-    cyan_highlighted
+    cyan_highlighted,
+    bright_green_highlighted,
 )
 from modules.Midi.midi_creator import (
     create_midi_segments_from_transcribed_data,
@@ -50,6 +53,7 @@ from modules.Ultrastar import (
     ultrastar_writer,
 )
 from modules.Speech_Recognition.TranscribedData import TranscribedData
+from modules.Speech_Recognition.Whisper import WhisperModel
 from modules.Ultrastar.ultrastar_score_calculator import Score, calculate_score_points
 from modules.Ultrastar.ultrastar_txt import FILE_ENCODING, FormatVersion
 from modules.Ultrastar.coverter.ultrastar_txt_converter import from_ultrastar_txt, \
@@ -58,11 +62,12 @@ from modules.Ultrastar.ultrastar_parser import parse_ultrastar_txt
 from modules.common_print import print_support, print_help, print_version
 from modules.os_helper import check_file_exists, get_unused_song_output_dir
 from modules.plot import create_plots
-from modules.musicbrainz_client import get_music_infos
+from modules.musicbrainz_client import search_musicbrainz
 from modules.sheet import create_sheet
 from modules.ProcessData import ProcessData, ProcessDataPaths, MediaInfo
 from modules.DeviceDetection.device_detection import check_gpu_support
 from modules.Audio.bpm import get_bpm_from_file
+from modules.Image.image_helper import save_image
 
 from Settings import Settings
 
@@ -132,7 +137,20 @@ def run() -> tuple[str, Score, Score]:
     """The processing function of this program"""
     #List selected options (can add more later)
     if settings.keep_numbers:
-        print(f"{ULTRASINGER_HEAD} {cyan_highlighted('Option:')} Numbers will be transcribed as numerics (i.e. 1, 2, 3, etc.)")
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Numbers will be transcribed as numerics (i.e. 1, 2, 3, etc.)')}")
+    if settings.create_plot:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Plot will be created')}")
+    if settings.keep_cache:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Cache folder will not be deleted')}")
+    if settings.create_audio_chunks:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Audio chunks will be created')}")
+    if not settings.create_karaoke:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Karaoke txt will not be created')}")
+    if not settings.use_separated_vocal:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Vocals will not be separated')}")
+    if not settings.hyphenation:
+        print(f"{ULTRASINGER_HEAD} {bright_green_highlighted('Option:')} {cyan_highlighted('Hyphenation will not be applied')}")
+
     process_data = InitProcessData()
     
     process_data.process_data_paths.cache_folder_path = (
@@ -140,7 +158,7 @@ def run() -> tuple[str, Score, Score]:
         if settings.cache_override_path is None
         else settings.cache_override_path
     )
-
+    
     # Create process audio
     process_data.process_data_paths.processing_audio_path = CreateProcessAudio(process_data)
 
@@ -194,7 +212,7 @@ def run() -> tuple[str, Score, Score]:
     # Cleanup
     if not settings.keep_cache:
         remove_cache_folder(process_data.process_data_paths.cache_folder_path)
-
+        
     # Print Support
     print_support()
     return ultrastar_file_output, simple_score, accurate_score
@@ -506,24 +524,13 @@ def infos_from_audio_input_file() -> tuple[str, str, str, MediaInfo]:
     artist, title = None, None
     if " - " in basename_without_ext:
         artist, title = basename_without_ext.split(" - ", 1)
-        search_string = f"{artist} - {title}"
-    else:
-        search_string = basename_without_ext
-
-    # Get additional data for song
-    (title_info, artist_info, year_info, genre_info) = get_music_infos(search_string)
-
-    if title_info is not None:
-        title = title_info
-        artist = artist_info
     else:
         title = basename_without_ext
-        artist = "Unknown Artist"
 
-    if artist is not None and title is not None:
-        basename_without_ext = f"{artist} - {title}"
-        extension = os.path.splitext(basename)[1]
-        basename = f"{basename_without_ext}{extension}"
+    song_info = search_musicbrainz(title, artist)
+    basename_without_ext = f"{song_info.artist} - {song_info.title}"
+    extension = os.path.splitext(basename)[1]
+    basename = f"{basename_without_ext}{extension}"
 
     song_folder_output_path = os.path.join(settings.output_folder_path, basename_without_ext)
     song_folder_output_path = get_unused_song_output_dir(song_folder_output_path)
@@ -534,13 +541,15 @@ def infos_from_audio_input_file() -> tuple[str, str, str, MediaInfo]:
         os.path.join(song_folder_output_path, basename),
     )
     # Todo: Read ID3 tags
+    if song_info.cover_image_data is not None:
+        save_image(song_info.cover_image_data, basename_without_ext, song_folder_output_path)
     ultrastar_audio_input_path = os.path.join(song_folder_output_path, basename)
     real_bpm = get_bpm_from_file(settings.input_file_path)
     return (
         basename_without_ext,
         song_folder_output_path,
         ultrastar_audio_input_path,
-        MediaInfo(artist=artist, title=title, year=year_info, genre=genre_info, bpm=real_bpm),
+        MediaInfo(artist=song_info.artist, title=song_info.title, year=song_info.year, genre=song_info.genres, bpm=real_bpm, cover_url=song_info.cover_url),
     )
 
 
@@ -602,7 +611,13 @@ def init_settings(argv: list[str]) -> Settings:
             settings.output_folder_path = arg
         elif opt in ("--whisper"):
             settings.transcriber = "whisper"
-            settings.whisper_model = arg
+
+            #Addition of whisper model choice. Added error handling for unknown models.
+            try:
+                settings.whisper_model = WhisperModel(arg)
+            except ValueError as ve:
+                print(f"{ULTRASINGER_HEAD} The model {arg} is not a valid whisper model selection. Please use one of the following models: {blue_highlighted(', '.join([m.value for m in WhisperModel]))}")
+                sys.exit()
         elif opt in ("--whisper_align_model"):
             settings.whisper_align_model = arg
         elif opt in ("--whisper_batch_size"):
@@ -610,7 +625,7 @@ def init_settings(argv: list[str]) -> Settings:
         elif opt in ("--whisper_compute_type"):
             settings.whisper_compute_type = arg
         elif opt in ("--keep_numbers"):
-            settings.keep_numbers = arg in ["True", "true"]
+            settings.keep_numbers = True
         elif opt in ("--language"):
             settings.language = arg
         elif opt in ("--crepe"):
@@ -618,27 +633,27 @@ def init_settings(argv: list[str]) -> Settings:
         elif opt in ("--crepe_step_size"):
             settings.crepe_step_size = int(arg)
         elif opt in ("--plot"):
-            settings.create_plot = arg in ["True", "true"]
+            settings.create_plot = True
         elif opt in ("--midi"):
-            settings.create_midi = arg in ["True", "true"]
-        elif opt in ("--hyphenation"):
-            settings.hyphenation = eval(arg.title())
+            settings.create_midi = True
+        elif opt in ("--disable_hyphenation"):
+            settings.hyphenation = False
         elif opt in ("--disable_separation"):
-            settings.use_separated_vocal = not arg
+            settings.use_separated_vocal = False
         elif opt in ("--disable_karaoke"):
-            settings.create_karaoke = not arg
+            settings.create_karaoke = False
         elif opt in ("--create_audio_chunks"):
             settings.create_audio_chunks = arg
         elif opt in ("--ignore_audio"):
-            settings.ignore_audio = arg in ["True", "true"]
+            settings.ignore_audio = True
         elif opt in ("--force_cpu"):
-            settings.force_cpu = arg
+            settings.force_cpu = True
             if settings.force_cpu:
                 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
         elif opt in ("--force_whisper_cpu"):
-            settings.force_whisper_cpu = eval(arg.title())
+            settings.force_whisper_cpu = True
         elif opt in ("--force_crepe_cpu"):
-            settings.force_crepe_cpu = eval(arg.title())
+            settings.force_crepe_cpu = True
         elif opt in ("--format_version"):
             if arg == FormatVersion.V0_3_0.value:
                 settings.format_version = FormatVersion.V0_3_0
@@ -653,10 +668,17 @@ def init_settings(argv: list[str]) -> Settings:
                     f"{ULTRASINGER_HEAD} {red_highlighted('Error: Format version')} {blue_highlighted(arg)} {red_highlighted('is not supported.')}"
                 )
                 sys.exit(1)
-        elif opt in ("--keep_cache"):
-            settings.keep_cache = arg
+        elif opt in ("--keep_cache"):    
+            settings.keep_cache = True
         elif opt in ("--musescore_path"):
             settings.musescore_path = arg
+        #Addition of demucs model choice. Work seems to be needed to make sure syntax is same for models. Added error handling for unknown models
+        elif opt in ("--demucs"):
+            try:
+                settings.demucs_model = DemucsModel(arg)
+            except ValueError as ve:
+                print(f"{ULTRASINGER_HEAD} The model {arg} is not a valid demucs model selection. Please use one of the following models: {blue_highlighted(', '.join([m.value for m in DemucsModel]))}")
+                sys.exit()
         elif opt in ("--cookiefile"):
             settings.cookiefile = arg
     if settings.output_folder_path == "":
@@ -672,6 +694,7 @@ def init_settings(argv: list[str]) -> Settings:
     return settings
 
 
+#For convenience, made True/False options into noargs
 def arg_options():
     short = "hi:o:amv:"
     long = [
@@ -687,19 +710,19 @@ def arg_options():
         "language=",
         "plot=",
         "midi=",
-        "hyphenation=",
-        "disable_separation=",
-        "disable_karaoke=",
-        "create_audio_chunks=",
+        "disable_hyphenation",
+        "disable_separation",
+        "disable_karaoke",
+        "create_audio_chunks",
         "ignore_audio=",
-        "force_cpu=",
-        "force_whisper_cpu=",
-        "force_crepe_cpu=",
+        "force_cpu",
+        "force_whisper_cpu",
+        "force_crepe_cpu",
         "format_version=",
         "keep_cache=",
         "musescore_path=",
-        "cookiefile=",
-        "keep_numbers="
+        "keep_numbers",
+        "cookiefile="
     ]
     return long, short
 

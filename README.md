@@ -1,9 +1,10 @@
 [![Discord](https://img.shields.io/discord/1048892118732656731?logo=discord)](https://discord.gg/rYz9wsxYYK)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rakuri255/UltraSinger/blob/master/colab/UltraSinger.ipynb)
 ![Status](https://img.shields.io/badge/status-development-yellow)
+
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/rakuri255/UltraSinger/main.yml)
 [![GitHub](https://img.shields.io/github/license/rakuri255/UltraSinger)](https://github.com/rakuri255/UltraSinger/blob/main/LICENSE)
 [![CodeFactor](https://www.codefactor.io/repository/github/rakuri255/ultrasinger/badge)](https://www.codefactor.io/repository/github/rakuri255/ultrasinger)
-
 [![Check Requirements](https://github.com/rakuri255/UltraSinger/actions/workflows/main.yml/badge.svg)](https://github.com/rakuri255/UltraSinger/actions/workflows/main.yml)
 [![Pytest](https://github.com/rakuri255/UltraSinger/actions/workflows/pytest.yml/badge.svg)](https://github.com/rakuri255/UltraSinger/actions/workflows/pytest.yml)
 [![docker](https://github.com/rakuri255/UltraSinger/actions/workflows/docker.yml/badge.svg)](https://hub.docker.com/r/rakuri255/ultrasinger)
@@ -103,14 +104,19 @@ _Not all options working now!_
     ## if INPUT is ultrastar.txt ##
     default  Creates all
 
+    [separation]
+    # Default is htdemucs
+    --demucs              Model name htdemucs|htdemucs_ft|htdemucs_6s|hdemucs_mmi|mdx|mdx_extra|mdx_q|mdx_extra_q >> ((default) is htdemucs)
+
     [transcription]
     # Default is whisper
-    --whisper               Multilingual model > tiny|base|small|medium|large-v1|large-v2  >> ((default) is large-v2)
+    --whisper               Multilingual model > tiny|base|small|medium|large-v1|large-v2|large-v3  >> ((default) is large-v2)
                             English-only model > tiny.en|base.en|small.en|medium.en
     --whisper_align_model   Use other languages model for Whisper provided from huggingface.co
     --language              Override the language detected by whisper, does not affect transcription but steps after transcription
     --whisper_batch_size    Reduce if low on GPU mem >> ((default) is 16)
     --whisper_compute_type  Change to "int8" if low on GPU mem (may reduce accuracy) >> ((default) is "float16" for cuda devices, "int8" for cpu)
+    --keep_numbers          Numbers will be transcribed as numerics instead of as words 
     
     [pitcher]
     # Default is crepe
@@ -118,24 +124,23 @@ _Not all options working now!_
     --crepe_step_size  unit is miliseconds >> ((default) is 10)
     
     [extra]
-    --hyphenation           Use automatic hyphenation > True|False >> ((default) is True)
-    --disable_separation    Disable track separation > True|False >> ((default) is False)
-    --disable_karaoke       True|False >> ((default) is False)
-    --ignore_audio          True|False >> ((default) is False)
-    --create_audio_chunks   True|False >> ((default) is False)
-    --keep_cache            Keep cache folder after generation > True|False >> ((default) is False)
-    --plot                  Create a pitch plot > True|False >> ((default) is False)
+    --disable_hyphenation   Disable word hyphenation. Hyphenation is enabled by default.
+    --disable_separation    Disable track separation. Track separation is enabled by default.
+    --disable_karaoke       Disable creation of karaoke style txt file. Karaoke is enabled by default.
+    --create_audio_chunks   Enable creation of audio chunks. Audio chunks are disabled by default.
+    --keep_cache            Keep cache folder after creation. Cache folder is removed by default.
+    --plot                  Enable creation of plots. Plots are disabled by default.
     --format_version        0.3.0|1.0.0|1.1.0|1.2.0 >> ((default) is 1.2.0)
     --musescore_path        path to MuseScore executable
-    --keep_numbers          Transcribe numbers as digits and not words > True|False >> ((default) is False)
+    --keep_numbers          Transcribe numbers as digits and not words
     
     [yt-dlp]
     --cookiefile            File name where cookies should be read from
 
     [device]
-    --force_cpu             True|False >> ((default) is False)  All steps will be forced to cpu
-    --force_whisper_cpu     True|False >> ((default) is False)  Only whisper will be forced to cpu
-    --force_crepe_cpu       True|False >> ((default) is False)  Only crepe will be forced to cpu
+    --force_cpu             Force all steps to be processed on CPU.
+    --force_whisper_cpu     Only whisper will be forced to cpu
+    --force_crepe_cpu       Only crepe will be forced to cpu
 ```
 
 For standard use, you only need to use [opt]. All other options are optional.
@@ -153,7 +158,7 @@ For standard use, you only need to use [opt]. All other options are optional.
 ##### Youtube
 
 ```commandline
--i https://www.youtube.com/watch?v=BaW_jenozKc
+-i https://www.youtube.com/watch?v=YwNs1Z0qRY0
 ```
 
 Note that if you run into a yt-dlp error such as `Sign in to confirm you’re not a bot. This helps protect our community` ([yt-dlp issue](https://github.com/yt-dlp/yt-dlp/issues/10128)) you can follow these steps:
@@ -197,10 +202,10 @@ Example for romanian:
 Is on by default. Can also be deactivated if hyphenation does not produce 
 anything useful. Note that the word is simply split, 
 without paying attention to whether the separated word really 
-starts at the place or is heard.  
+starts at the place or is heard. To disable:
 
 ```commandline
--i XYZ --hyphenation True
+-i XYZ --disable_hyphenation
 ```
 
 ### 👂 Pitcher
@@ -220,7 +225,7 @@ The vocals are separated from the audio before they are passed to the models. If
 you have the option to disable this function; in which case the original audio file is used instead.
 
 ```commandline
--i XYZ --disable_separation True
+-i XYZ --disable_separation 
 ```
 
 ### Sheet Music
@@ -236,13 +241,15 @@ Or provide the path to the `MuseScore` executable.
 
 This defines the format version of the UltraStar.txt file. For more info see [Official UltraStar format specification](https://usdx.eu/format/).
 
-You can choose between 3 different format versions. The default is `1.0.0`.
-* `0.3.0` is the old format version. Use this if you have problems with the new format.
-* `1.0.0` is the current format version.
-* `1.1.0` is the upcoming format version. It is not finished yet.
+You can choose between different format versions. The default is `1.2.0`.
+* `0.3.0` is the first format version. Use this if you have an old UltraStar program and problems with the newer format.
+* `1.0.0` should be supported by the most UltraStar programs. Use this if you have problems with the newest format version
+* `1.1.0` is the current format version.
+* `1.2.0` is the upcoming format version. It is not finished yet.
+* `2.0.0` is the next format version. It is not finished yet.
 
 ```commandline
--i XYZ --format_version 1.0.0
+-i XYZ --format_version 1.2.0
 ```
 
 ### 🏆 Ultrastar Score Calculation
@@ -289,6 +296,6 @@ Whisper needs more than 8GB VRAM in the `large` model!
 
 You can also force cpu usage with the extra option `--force_cpu`.
 
-### Containerized (Docker or Podman)
+### 📦 Containerized (Docker or Podman)
 
 See [container/README.md](container/README.md)

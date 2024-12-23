@@ -1,3 +1,13 @@
+# Version: 0.0.13dev2
+Date: 2024.12.22
+- Changes:
+  - Download Cover from MusicBrainz
+  - Fix selection of whisper model
+  - Added colab notebook
+  - Optimized whisper language check with confidence
+  - Improved arguments, so you dont need to use true or false
+  - Added interactive mode
+
 # Version: 0.0.12
 Date: 2024.12.19
 - Changes:
@@ -12,6 +22,7 @@ Date: 2024.12.19
   - Fix model path option
   - Fix error in PDF sheet generation
   - Fix hypen language download
+  - Fix install scripts
   - Some bug fixes and improved error handling and logs
 
 # Version: 0.0.11
