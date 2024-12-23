@@ -166,10 +166,8 @@ def transcribe_with_whisper(
         if keep_numbers == False: 
             Num2Word_EN.to_currency = to_currency  
             for obj in result["segments"]:
-                print(f"laanguage: {language}")
-                print( obj["text"])
                 obj["text"] = number_to_words(obj["text"],language)
-                print(obj["text"])
+
         # align whisper output
         result_aligned = whisperx.align(
             result["segments"],
